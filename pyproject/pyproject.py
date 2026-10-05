@@ -210,6 +210,8 @@ wheels/
 .venv/
 venv/
 ENV/
+build
+pyproject.egg-info
 """
     (project_dir / ".gitignore").write_text(content)
 
@@ -336,7 +338,7 @@ def main():
             if not new_name:
                 print("Error: new project name cannot be empty.")
                 sys.exit(1)
-        
+
         rename_project(old_name, new_name)
     else:
         project_name = args[0]

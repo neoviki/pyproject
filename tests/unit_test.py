@@ -7,8 +7,7 @@ import unittest
 from pathlib import Path
 
 
-# Corrected path: pyproject.py is in the same directory as this test file
-PROJECT_SCRIPT = Path(__file__).resolve().parent / "pyproject.py"
+PROJECT_SCRIPT = Path(__file__).resolve().parent.parent / "src" / "pyproject" / "pyproject.py"
 
 
 class TestPyproject(unittest.TestCase):
@@ -46,19 +45,31 @@ class TestPyproject(unittest.TestCase):
         self.create_test_project()
 
         project = self.test_dir / "splitter"
-        package = project / "splitter"
+        src_dir = project / "src"
+        package = src_dir / "splitter"
+        tests_dir = project / "tests"
 
+        # Check project root
         self.assertTrue(project.is_dir())
+        
+        # Check src layout
+        self.assertTrue(src_dir.is_dir())
         self.assertTrue(package.is_dir())
 
+        # Check package files
         self.assertTrue((package / "__init__.py").exists())
         self.assertTrue((package / "splitter.py").exists())
-        self.assertTrue((package / "unit_test.py").exists())
-        self.assertTrue((package / "unit_test").exists())
 
+        # Check tests directory
+        self.assertTrue(tests_dir.is_dir())
+        self.assertTrue((tests_dir / "unit_test.py").exists())
+        self.assertTrue((tests_dir / "unit_test").exists())
+
+        # Check root-level files
         self.assertTrue((project / "pyproject.toml").exists())
         self.assertTrue((project / "install.sh").exists())
         self.assertTrue((project / "uninstall.sh").exists())
+        self.assertTrue((project / "clean.sh").exists())
         self.assertTrue((project / "README.md").exists())
         self.assertTrue((project / "LICENSE").exists())
         self.assertTrue((project / ".gitignore").exists())
@@ -95,20 +106,31 @@ class TestPyproject(unittest.TestCase):
 
         old_project = self.test_dir / "splitter"
         new_project = self.test_dir / "mytool"
-        new_package = new_project / "mytool"
+        new_src_dir = new_project / "src"
+        new_package = new_src_dir / "mytool"
+        new_tests_dir = new_project / "tests"
 
         self.assertFalse(old_project.exists())
         self.assertTrue(new_project.is_dir())
+        
+        # Check src layout
+        self.assertTrue(new_src_dir.is_dir())
         self.assertTrue(new_package.is_dir())
 
+        # Check package files
         self.assertTrue((new_package / "__init__.py").exists())
         self.assertTrue((new_package / "mytool.py").exists())
-        self.assertTrue((new_package / "unit_test.py").exists())
-        self.assertTrue((new_package / "unit_test").exists())
 
+        # Check tests directory
+        self.assertTrue(new_tests_dir.is_dir())
+        self.assertTrue((new_tests_dir / "unit_test.py").exists())
+        self.assertTrue((new_tests_dir / "unit_test").exists())
+
+        # Check root-level files
         self.assertTrue((new_project / "pyproject.toml").exists())
         self.assertTrue((new_project / "install.sh").exists())
         self.assertTrue((new_project / "uninstall.sh").exists())
+        self.assertTrue((new_project / "clean.sh").exists())
         self.assertTrue((new_project / "README.md").exists())
         self.assertTrue((new_project / "LICENSE").exists())
         self.assertTrue((new_project / ".gitignore").exists())
@@ -131,6 +153,7 @@ class TestPyproject(unittest.TestCase):
             'mytool = "mytool.mytool:main"',
             content,
         )
+        self.assertIn('where = ["src"]', content)
 
         self.assertNotIn("splitter", content)
 
@@ -148,6 +171,7 @@ class TestPyproject(unittest.TestCase):
 
         self.assertIn("# mytool", content)
         self.assertIn("mytool", content)
+        self.assertIn("cd tests", content)
         self.assertNotIn("splitter", content)
 
     def test_rename_using_full_path(self):

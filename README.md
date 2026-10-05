@@ -67,18 +67,19 @@ When you run `pyproject <name>`, it creates the following structure:
 
 ```text
 <project_name>/
-├── pyproject.toml          # PEP 517 build configuration
-├── README.md               # Project documentation
-├── LICENSE                 # MIT License
-├── .gitignore              # Standard Python gitignore
-├── install.sh              # Script to install/reinstall via pipx
-├── uninstall.sh            # Script to remove via pipx
-├── commit                  # Quick git add/commit/push script
-└── <project_name>/         # The actual Python package
-    ├── __init__.py         # Contains __version__
-    ├── <project_name>.py   # Main entry point with main() function
-    ├── unit_test.py        # Basic unittest template
-    └── unit_test           # Executable bash script to run tests
+├── pyproject.toml              # PEP 517 build configuration
+├── README.md                   # Project documentation
+├── LICENSE                     # MIT License
+├── .gitignore                  # Standard Python gitignore
+├── install.sh                  # Script to install/reinstall via pipx
+├── uninstall.sh                # Script to remove via pipx
+├── commit                      # Quick git add/commit/push script
+├── src/<project_name>/         # The actual Python package
+│       ├── __init__.py         # Contains __version__
+│       └── <project_name>.py   # Main entry point with main() function
+└── tests/                      # Test directory (not shipped with package)
+    ├── unit_test               # Executable bash script to run tests
+    └── unit_test.py            # Basic unittest template
 ```
 
 ## Development and Testing
@@ -87,7 +88,7 @@ To contribute to pyproject or verify your local setup, you can run the built-in 
 
 ```bash
 # Navigate to the pyproject package directory
-cd pyproject
+cd tests
 
 # Run the tests using the provided bash script
 ./unit_test

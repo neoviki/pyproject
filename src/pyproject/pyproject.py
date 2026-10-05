@@ -46,7 +46,7 @@ license = {{text = "MIT"}}
 {project_name} = "{project_name}.{project_name}:main"
 
 [tool.setuptools.packages.find]
-include = ["{project_name}*"]
+where = ["src"]
 '''
     (project_dir / "pyproject.toml").write_text(content)
 
@@ -98,8 +98,13 @@ def create_uninstall_script(project_dir, project_name):
     file_path.chmod(0o755)
 
 
-def create_unit_test(package_dir, project_name):
-    content = f'''import unittest
+def create_unit_test(tests_dir, project_name):
+    content = f'''import sys
+import unittest
+from pathlib import Path
+
+# Add src directory to Python path so we can import the package
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import {project_name}
 
@@ -113,14 +118,24 @@ class TestProject(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 '''
-    (package_dir / "unit_test.py").write_text(content)
+    (tests_dir / "unit_test.py").write_text(content)
 
 
-def create_unit_test_script(package_dir):
-    file_path = package_dir / "unit_test"
+def create_unit_test_script(tests_dir):
+    file_path = tests_dir / "unit_test"
     file_path.write_text('''#!/bin/bash\n\npython3 -m unittest unit_test.py -v\n''')
     file_path.chmod(0o755)
 
+def create_unit_test_script2(project_dir):
+    file_path = project_dir / "unit_test"
+    file_path.write_text('''#!/bin/bash
+
+cd "$(dirname "$0")"
+cd tests
+
+python3 -m unittest unit_test.py -v
+''')
+    file_path.chmod(0o755)
 
 def create_commit_script(project_dir):
     file_path = project_dir / "commit"
@@ -128,8 +143,20 @@ def create_commit_script(project_dir):
     file_path.chmod(0o755)
 
 
+def create_clean_script(project_dir, project_name):
+    content = f'''#!/bin/bash
+
+rm -rf src/{project_name}/__pycache__
+rm -rf build src/{project_name}.egg-info __pycache__ tests/__pycache__
+
+echo "Cleaned build artifacts and cache files."
+'''
+    file_path = project_dir / "clean.sh"
+    file_path.write_text(content)
+    file_path.chmod(0o755)
+
+
 def create_readme(project_dir, project_name, description):
-    # This avoids triple-quote syntax errors entirely by using a list of strings
     lines = [
         f"# {project_name}",
         "",
@@ -150,7 +177,7 @@ def create_readme(project_dir, project_name, description):
         "## Testing",
         "",
         "```bash",
-        f"cd {project_name}",
+        "cd tests",
         "./unit_test",
         "```",
         ""
@@ -228,18 +255,25 @@ def create_project(project_name):
     description = ask_project_description()
     license_user = ask_license_user()
 
+    # Create directory structure with src/ layout
     project_dir.mkdir()
-    package_dir = project_dir / project_name
+    src_dir = project_dir / "src"
+    src_dir.mkdir()
+    package_dir = src_dir / project_name
     package_dir.mkdir()
+    tests_dir = project_dir / "tests"
+    tests_dir.mkdir()
 
     create_pyproject_file(project_dir, project_name, description)
     create_init_file(package_dir)
     create_main_file(package_dir, project_name)
     create_install_script(project_dir, project_name)
     create_uninstall_script(project_dir, project_name)
-    create_unit_test(package_dir, project_name)
-    create_unit_test_script(package_dir)
+    create_unit_test(tests_dir, project_name)
+    create_unit_test_script(tests_dir)
+    create_unit_test_script2(project_dir)
     create_commit_script(project_dir)
+    create_clean_script(project_dir, project_name)
     create_readme(project_dir, project_name, description)
     create_license(project_dir, license_user)
     create_gitignore(project_dir)
@@ -271,16 +305,41 @@ def rename_project(old_name, new_name):
         print(f"Error: target project '{new_name}' already exists at {new_path}")
         sys.exit(1)
 
-    old_package_dir = old_path / old_project_name
-    if not old_package_dir.exists():
-        print(f"Error: could not find package directory '{old_package_dir}'")
+    # Detect layout: src/ layout or flat layout
+    if (old_path / "src" / old_project_name).exists():
+        old_package_dir = old_path / "src" / old_project_name
+        uses_src_layout = True
+    elif (old_path / old_project_name).exists():
+        old_package_dir = old_path / old_project_name
+        uses_src_layout = False
+    else:
+        print(f"Error: could not find package directory for '{old_project_name}'")
         sys.exit(1)
+
+    # Detect tests directory location
+    if (old_path / "tests").exists():
+        old_tests_dir = old_path / "tests"
+    else:
+        old_tests_dir = old_package_dir  # fallback to old flat layout
 
     # Rename directories
     old_path.rename(new_path)
-    new_package_dir = new_path / old_project_name
-    new_package_dir.rename(new_path / new_name)
-    new_package_dir = new_path / new_name
+
+    # Rename package directory
+    if uses_src_layout:
+        new_package_dir = new_path / "src" / old_project_name
+        final_package_dir = new_path / "src" / new_name
+    else:
+        new_package_dir = new_path / old_project_name
+        final_package_dir = new_path / new_name
+
+    new_package_dir.rename(final_package_dir)
+
+    # Rename tests directory if it exists at root level
+    new_tests_dir = new_path / "tests"
+    if not new_tests_dir.exists() and (new_path / old_project_name).exists():
+        # Old flat layout had tests inside package, move to root tests/
+        pass  # keep as is for backward compat
 
     # Update text files
     files_to_update = [
@@ -288,7 +347,7 @@ def rename_project(old_name, new_name):
         new_path / "README.md",
         new_path / "install.sh",
         new_path / "uninstall.sh",
-        new_package_dir / "unit_test.py",
+        new_tests_dir / "unit_test.py",
     ]
 
     for file_path in files_to_update:
@@ -298,13 +357,20 @@ def rename_project(old_name, new_name):
             file_path.write_text(content)
 
     # Rename and update main script
-    old_main_script = new_package_dir / f"{old_project_name}.py"
+    old_main_script = final_package_dir / f"{old_project_name}.py"
     if old_main_script.exists():
-        new_main_script = new_package_dir / f"{new_name}.py"
+        new_main_script = final_package_dir / f"{new_name}.py"
         content = old_main_script.read_text()
         content = content.replace(old_project_name, new_name)
         old_main_script.rename(new_main_script)
         new_main_script.write_text(content)
+
+    # Update clean.sh if it exists
+    clean_script = new_path / "clean.sh"
+    if clean_script.exists():
+        content = clean_script.read_text()
+        content = content.replace(old_project_name, new_name)
+        clean_script.write_text(content)
 
     print(f"Project renamed from '{old_project_name}' to '{new_name}' successfully.")
 

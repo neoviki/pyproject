@@ -6,7 +6,7 @@ import datetime
 from pathlib import Path
 
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 def is_valid_project_name(name):

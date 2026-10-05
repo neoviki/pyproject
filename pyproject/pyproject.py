@@ -210,9 +210,6 @@ wheels/
 .venv/
 venv/
 ENV/
-build/
-dist/
-*.egg-info/
 pyproject.egg-info/
 """
     (project_dir / ".gitignore").write_text(content)

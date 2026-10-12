@@ -1,4 +1,4 @@
 #!/bin/bash
 
 cd "$(dirname "$0")"
-python3 -m unittest unit_test.py -v
+PYPROJECT_SCRIPT=$PWD/../src/app/main.py python3 -m unittest unit_test.py -v

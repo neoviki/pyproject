@@ -1,14 +1,15 @@
 # pyproject
 
-A command-line tool to create and rename Python projects that are ready to be installed and managed via pipx. 
+A command-line tool to create, rename, and delete Python projects that are ready to be installed and managed via pipx.
 
-Instead of manually creating pyproject.toml, __init__.py, install scripts, and unit test templates, pyproject generates a fully functional, pipx-ready project structure in seconds.
+Instead of manually creating pyproject.toml, `__init__.py`, install scripts, and unit test templates, pyproject generates a fully functional, pipx-ready project structure in seconds.
 
 ## Features
 
-- Quick Project Creation: Generates a complete, PEP 517-compliant project structure.
-- Pipx-Ready: Includes pre-configured install.sh and uninstall.sh scripts for the generated projects.
-- Smart Renaming: Renames a project and automatically updates all internal references (e.g., pyproject.toml, README.md, main scripts, and test files).
+- Quick Project Creation: Generates a complete, PEP 517-compliant project structure with a fixed `src/app/main.py` layout — no project-name-dependent paths inside the package.
+- Pipx-Ready: Includes pre-configured `install.sh` and `uninstall.sh` scripts for the generated projects.
+- Smart Renaming: Uninstalls the old pipx package, renames the project, updates all references (`pyproject.toml`, `README.md`, helper scripts), and installs the new name — all in one command. Works from inside or outside the project directory.
+- Project Deletion: Uninstalls the pipx package and removes the project directory in a single confirmed step.
 - Built-in Testing: Generates a basic unittest suite and a runner script for the new project.
 - Interactive Prompts: Guides you through adding a description and license user during creation.
 
@@ -37,7 +38,7 @@ To remove the tool from your system, run:
 
 ## Usage
 
-Once installed, the `pyproject` command will be available globally in your terminal.
+Once installed, the `pyproject` command will be available globally in your terminal. Run `pyproject help` to see all commands at any time.
 
 ### Create a New Project
 Run the command followed by your desired project name:
@@ -51,7 +52,7 @@ You will be prompted interactively for:
 This will create a directory named `my_awesome_tool` with the complete project structure.
 
 ### Rename an Existing Project
-If you need to change a project's name, pyproject will rename the directories and update all internal file references automatically:
+Renaming uninstalls the old pipx package, renames the directory, updates all internal references, and installs the new name automatically:
 ```bash
 # Provide both old and new names as arguments
 pyproject rename my_awesome_tool my_better_tool
@@ -59,7 +60,43 @@ pyproject rename my_awesome_tool my_better_tool
 # Or provide just the old name, and it will prompt you for the new one
 pyproject rename my_awesome_tool
 ```
-(Note: You can also pass absolute or relative paths to the old project directory).
+(Note: You can also pass absolute or relative paths to the old project directory.)
+
+Renaming works no matter where you execute it from:
+```bash
+# From outside the project
+pyproject rename my_awesome_tool my_better_tool
+
+# From inside the project directory
+cd my_awesome_tool
+pyproject rename my_awesome_tool my_better_tool
+```
+
+Because the package is always `app` and the entry module always `main.py`, renaming only touches the project folder name and `pyproject.toml` — the code inside `src/app/` never needs to change.
+
+### Delete a Project
+Deleting uninstalls the pipx package and removes the project directory, after asking for confirmation:
+```bash
+# From outside the project
+pyproject delete my_awesome_tool
+
+# From inside the project directory
+cd my_awesome_tool
+pyproject delete my_awesome_tool
+
+# 'rm' and 'remove' are accepted as aliases
+pyproject rm my_awesome_tool
+```
+
+### Help
+Show all commands and the generated layout:
+```bash
+pyproject help
+# or
+pyproject --help
+# or
+pyproject -h
+```
 
 ## Generated Project Structure
 
@@ -74,9 +111,11 @@ When you run `pyproject <name>`, it creates the following structure:
 ├── install.sh                  # Script to install/reinstall via pipx
 ├── uninstall.sh                # Script to remove via pipx
 ├── commit                      # Quick git add/commit/push script
-├── src/<project_name>/         # The actual Python package
+├── clean.sh                    # Removes build artifacts and caches
+├── unit_test                   # Root-level test runner script
+├── src/app/                    # The actual Python package (always named 'app')
 │       ├── __init__.py         # Contains __version__
-│       └── <project_name>.py   # Main entry point with main() function
+│       └── main.py             # Main entry point with main() function
 └── tests/                      # Test directory (not shipped with package)
     ├── unit_test               # Executable bash script to run tests
     └── unit_test.py            # Basic unittest template
@@ -87,14 +126,17 @@ When you run `pyproject <name>`, it creates the following structure:
 To contribute to pyproject or verify your local setup, you can run the built-in unit tests. The tests use Python's tempfile module to safely create and destroy dummy projects without affecting your actual filesystem.
 
 ```bash
-# Navigate to the pyproject package directory
-cd tests
-
-# Run the tests using the provided bash script
+# From the repository root
 ./unit_test
 
 # Alternatively, run them directly with Python
-python3 -m unittest unit_test.py -v
+cd tests
+python3 -m unittest discover -s . -p "unit_test.py" -v
+```
+
+If the tool is not on your PATH, the tests locate it via `src/app/main.py` in the repository, or you can point them to it explicitly:
+```bash
+PYPROJECT_SCRIPT=/path/to/main.py ./unit_test
 ```
 
 ## License
